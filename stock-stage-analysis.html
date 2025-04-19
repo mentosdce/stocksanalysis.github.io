@@ -1,0 +1,865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Stage Analysis Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/luxon@2.4.0/build/global/luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-luxon@1.2.0/dist/chartjs-adapter-luxon.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@1.0.2/dist/chartjs-plugin-annotation.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-gray-50 min-h-screen dark:bg-gray-900 transition-colors duration-200">
+    <header class="bg-blue-600 dark:bg-blue-800 text-white shadow-lg transition-colors duration-200">
+        <div class="container mx-auto px-4 py-4">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold">Stock Stage Analysis Pro</h1>
+                <div class="flex space-x-4">
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-blue-700 dark:hover:bg-blue-900 transition-colors">
+                        <i class="fas fa-moon dark:hidden"></i>
+                        <i class="fas fa-sun hidden dark:inline"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="container mx-auto px-4 py-8">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            <!-- Sidebar -->
+            <div class="lg:col-span-1 bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors duration-200">
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold mb-4 dark:text-white">Stock Search</h2>
+                    <div class="relative">
+                        <input 
+                            type="text" 
+                            id="stock-search" 
+                            placeholder="Search symbol (e.g. AAPL)"
+                            class="w-full p-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-gray-700 dark:text-white"
+                        >
+                        <button id="search-btn" class="absolute right-2 top-2 p-1 text-gray-500 hover:text-blue-600 dark:hover:text-blue-400">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+                        Try: AAPL, MSFT, TSLA, AMZN, GOOGL
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold mb-4 dark:text-white">Analysis Settings</h2>
+                    <div class="space-y-3">
+                        <div class="flex items-center">
+                            <input type="checkbox" id="stage-toggle" class="mr-2 dark:bg-gray-700" checked>
+                            <label for="stage-toggle" class="dark:text-white">Show Stage Classification</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="wma-toggle" class="mr-2 dark:bg-gray-700" checked>
+                            <label for="wma-toggle" class="dark:text-white">Show 30W WMA</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="slope-toggle" class="mr-2 dark:bg-gray-700">
+                            <label for="slope-toggle" class="dark:text-white">Show WMA Slope</label>
+                        </div>
+                        <div class="flex items-center">
+                            <input type="checkbox" id="rsi-toggle" class="mr-2 dark:bg-gray-700">
+                            <label for="rsi-toggle" class="dark:text-white">Show RSI (14)</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-6">
+                    <h2 class="text-xl font-semibold mb-4 dark:text-white">Stage Definitions</h2>
+                    <div class="space-y-2 text-sm">
+                        <div class="flex items-start">
+                            <span class="inline-block w-3 h-3 rounded-full bg-green-500 mt-1 mr-2"></span>
+                            <div class="dark:text-gray-300">
+                                <span class="font-medium">Stage 2:</span> Uptrend, price > 30W WMA, slope > 0
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="inline-block w-3 h-3 rounded-full bg-blue-500 mt-1 mr-2"></span>
+                            <div class="dark:text-gray-300">
+                                <span class="font-medium">Early Stage 2:</span> Breaking out from base
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="inline-block w-3 h-3 rounded-full bg-yellow-500 mt-1 mr-2"></span>
+                            <div class="dark:text-gray-300">
+                                <span class="font-medium">Stage 3:</span> Topping, high volatility
+                            </div>
+                        </div>
+                        <div class="flex items-start">
+                            <span class="inline-block w-3 h-3 rounded-full bg-red-500 mt-1 mr-2"></span>
+                            <div class="dark:text-gray-300">
+                                <span class="font-medium">Stage 4:</span> Downtrend, price < 30W WMA
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="p-4 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                    <h3 class="font-medium mb-2 dark:text-white">Quick Actions</h3>
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="quick-ticker bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 text-blue-800 dark:text-white py-2 px-3 rounded text-sm transition-colors" data-ticker="AAPL">AAPL</button>
+                        <button class="quick-ticker bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 text-blue-800 dark:text-white py-2 px-3 rounded text-sm transition-colors" data-ticker="MSFT">MSFT</button>
+                        <button class="quick-ticker bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 text-blue-800 dark:text-white py-2 px-3 rounded text-sm transition-colors" data-ticker="TSLA">TSLA</button>
+                        <button class="quick-ticker bg-blue-100 dark:bg-blue-800 hover:bg-blue-200 dark:hover:bg-blue-700 text-blue-800 dark:text-white py-2 px-3 rounded text-sm transition-colors" data-ticker="GOOGL">GOOGL</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="lg:col-span-3 space-y-6">
+                <!-- Stock Info Card -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors duration-200">
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
+                        <div>
+                            <h2 id="stock-name" class="text-2xl font-bold dark:text-white">Apple Inc.</h2>
+                            <p id="stock-symbol" class="text-gray-600 dark:text-gray-300">AAPL</p>
+                        </div>
+                        <div class="text-right">
+                            <p id="stock-price" class="text-3xl font-bold dark:text-white">$175.34</p>
+                            <p id="stock-change" class="text-green-500 dark:text-green-400">+2.34 (1.35%)</p>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">Current Stage</p>
+                            <p id="stock-stage" class="font-semibold dark:text-white">Stage 2</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">WMA Slope</p>
+                            <p id="wma-slope" class="font-semibold dark:text-white">0.25%</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">RSI (14)</p>
+                            <p id="stock-rsi" class="font-semibold dark:text-white">62.5</p>
+                        </div>
+                        <div>
+                            <p class="text-gray-500 dark:text-gray-400">BB Width</p>
+                            <p id="bb-width" class="font-semibold dark:text-white">12.3%</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stage Analysis Chart -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors duration-200">
+                    <div class="h-96">
+                        <canvas id="stage-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Performance Metrics -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors duration-200">
+                    <h2 class="text-xl font-semibold mb-4 dark:text-white">Stage Performance Metrics</h2>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg transition-colors">
+                            <p class="text-gray-500 dark:text-gray-300">Stage 2 Returns</p>
+                            <p id="stage2-returns" class="text-2xl font-bold text-green-600 dark:text-green-400">+24.5%</p>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg transition-colors">
+                            <p class="text-gray-500 dark:text-gray-300">Stage 4 Returns</p>
+                            <p id="stage4-returns" class="text-2xl font-bold text-red-600 dark:text-red-400">-18.2%</p>
+                        </div>
+                        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg transition-colors">
+                            <p class="text-gray-500 dark:text-gray-300">Strategy Sharpe</p>
+                            <p id="strategy-sharpe" class="text-2xl font-bold text-blue-600 dark:text-blue-400">1.85</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Signals -->
+                <div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow transition-colors duration-200">
+                    <h2 class="text-xl font-semibold mb-4 dark:text-white">Recent Stage Changes</h2>
+                    <div class="overflow-x-auto">
+                        <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                            <thead class="bg-gray-50 dark:bg-gray-700">
+                                <tr>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">From</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">To</th>
+                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Price</th>
+                                </tr>
+                            </thead>
+                            <tbody id="stage-changes" class="bg-white divide-y divide-gray-200 dark:bg-gray-800 dark:divide-gray-700">
+                                <!-- Will be populated by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-100 dark:bg-gray-800 py-6 mt-8 transition-colors duration-200">
+        <div class="container mx-auto px-4 text-center text-gray-600 dark:text-gray-300">
+            <p>Stock data provided by Yahoo Finance. Not real financial advice.</p>
+            <p class="mt-2">© 2023 Stock Stage Analysis Pro. All rights reserved.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Global variables
+        let stageChart;
+        let currentData = [];
+        const CORS_PROXY = ""; // Leave empty or use your own proxy if needed
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            initStageChart();
+            setupEventListeners();
+            loadDefaultStock();
+        });
+
+        // Set up all event listeners
+        function setupEventListeners() {
+            // Search functionality
+            document.getElementById('search-btn').addEventListener('click', searchStock);
+            document.getElementById('stock-search').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') searchStock();
+            });
+
+            // Quick ticker buttons
+            document.querySelectorAll('.quick-ticker').forEach(button => {
+                button.addEventListener('click', () => {
+                    const ticker = button.getAttribute('data-ticker');
+                    document.getElementById('stock-search').value = ticker;
+                    updateStockAnalysis(ticker);
+                });
+            });
+
+            // Analysis toggles
+            document.getElementById('stage-toggle').addEventListener('change', updateChartDisplay);
+            document.getElementById('wma-toggle').addEventListener('change', updateChartDisplay);
+            document.getElementById('slope-toggle').addEventListener('change', updateChartDisplay);
+            document.getElementById('rsi-toggle').addEventListener('change', updateChartDisplay);
+
+            // Theme toggle
+            document.getElementById('theme-toggle').addEventListener('click', toggleTheme);
+        }
+
+        // Load default stock (AAPL)
+        function loadDefaultStock() {
+            updateStockAnalysis('AAPL');
+        }
+
+        // Search for a stock
+        function searchStock() {
+            const ticker = document.getElementById('stock-search').value.trim().toUpperCase();
+            if (ticker) {
+                updateStockAnalysis(ticker);
+            }
+        }
+
+        // Initialize the stage chart
+        function initStageChart() {
+            const stageCtx = document.getElementById('stage-chart').getContext('2d');
+            
+            stageChart = new Chart(stageCtx, {
+                type: 'line',
+                data: {
+                    datasets: [
+                        {
+                            label: 'Price',
+                            data: [],
+                            borderColor: 'rgb(59, 130, 246)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            tension: 0.1
+                        },
+                        {
+                            label: '30W WMA',
+                            data: [],
+                            borderColor: 'rgb(234, 88, 12)',
+                            borderWidth: 2,
+                            pointRadius: 0,
+                            borderDash: [5, 5]
+                        },
+                        {
+                            label: 'RSI (14)',
+                            data: [],
+                            borderColor: 'rgb(139, 92, 246)',
+                            borderWidth: 1,
+                            pointRadius: 0,
+                            yAxisID: 'y1',
+                            hidden: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'month',
+                                displayFormats: {
+                                    month: 'MMM yyyy'
+                                }
+                            },
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y: {
+                            position: 'left',
+                            grid: {
+                                color: 'rgba(0, 0, 0, 0.05)'
+                            }
+                        },
+                        y1: {
+                            position: 'right',
+                            min: 0,
+                            max: 100,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                            labels: {
+                                usePointStyle: true
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    let label = context.dataset.label || '';
+                                    if (label) {
+                                        label += ': ';
+                                    }
+                                    if (context.parsed.y !== null) {
+                                        label += context.dataset.yAxisID === 'y1' 
+                                            ? context.parsed.y.toFixed(1)
+                                            : '$' + context.parsed.y.toFixed(2);
+                                    }
+                                    return label;
+                                }
+                            }
+                        },
+                        annotation: {
+                            annotations: {}
+                        }
+                    }
+                },
+                plugins: [ChartAnnotation]
+            });
+        }
+
+        // Update chart display based on toggle states
+        function updateChartDisplay() {
+            const showStage = document.getElementById('stage-toggle').checked;
+            const showWMA = document.getElementById('wma-toggle').checked;
+            const showSlope = document.getElementById('slope-toggle').checked;
+            const showRSI = document.getElementById('rsi-toggle').checked;
+
+            // Update dataset visibility
+            stageChart.data.datasets[1].hidden = !showWMA;
+            stageChart.data.datasets[2].hidden = !showRSI;
+
+            // Update stage annotations
+            if (showStage && currentData.length > 0) {
+                updateStageAnnotations(currentData);
+            } else {
+                stageChart.options.plugins.annotation.annotations = {};
+            }
+
+            stageChart.update();
+        }
+
+        // Fetch stock data from Yahoo Finance
+        async function fetchStockData(ticker, startDate='2015-01-01', endDate=new Date().toISOString().split('T')[0], interval='1wk') {
+            try {
+                // Show loading state
+                document.getElementById('stock-name').textContent = "Loading...";
+                document.getElementById('stock-price').textContent = "--";
+                
+                // Convert dates to timestamps
+                const startTimestamp = Math.floor(new Date(startDate).getTime() / 1000);
+                const endTimestamp = Math.floor(new Date(endDate).getTime() / 1000);
+                
+                const url = `${CORS_PROXY}https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?period1=${startTimestamp}&period2=${endTimestamp}&interval=${interval}`;
+                
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('Network response was not ok');
+                
+                const data = await response.json();
+                return processYahooData(data);
+            } catch (error) {
+                console.error('Error fetching data:', error);
+                alert(`Error fetching data for ${ticker}. Please try again.`);
+                return null;
+            }
+        }
+
+        // Process Yahoo Finance API response
+        function processYahooData(yahooData) {
+            if (!yahooData.chart.result || yahooData.chart.result.length === 0) return null;
+            
+            const result = yahooData.chart.result[0];
+            const timestamps = result.timestamp;
+            const quotes = result.indicators.quote[0];
+            const adjClose = result.indicators.adjclose ? result.indicators.adjclose[0].adjclose : quotes.close;
+            
+            const meta = result.meta;
+            const currency = meta.currency;
+            const symbol = meta.symbol;
+            const exchangeName = meta.exchangeName;
+            
+            return timestamps.map((ts, i) => ({
+                date: new Date(ts * 1000),
+                open: quotes.open[i],
+                high: quotes.high[i],
+                low: quotes.low[i],
+                close: adjClose[i],
+                volume: quotes.volume[i],
+                currency,
+                symbol,
+                exchangeName
+            }));
+        }
+
+        // Calculate Weighted Moving Average
+        function wma(series, period) {
+            const weights = Array.from({length: period}, (_, i) => i + 1);
+            const sumWeights = weights.reduce((a, b) => a + b, 0);
+            
+            return series.map((_, i, arr) => {
+                if (i < period - 1) return null;
+                const slice = arr.slice(i - period + 1, i + 1);
+                return slice.reduce((sum, val, idx) => sum + val * weights[idx], 0) / sumWeights;
+            });
+        }
+
+        // Calculate WMA Slope
+        function wmaSlope(series, period) {
+            const wmaVals = wma(series, period);
+            return wmaVals.map((val, i, arr) => {
+                if (i === 0 || arr[i-1] === null || val === null) return null;
+                return (val - arr[i-1]) / arr[i-1];
+            });
+        }
+
+        // Calculate RSI
+        function calculateRSI(closes, period=14) {
+            const rsi = [];
+            let avgGain = 0;
+            let avgLoss = 0;
+
+            // Calculate initial average gains and losses
+            for (let i = 1; i <= period; i++) {
+                const change = closes[i] - closes[i - 1];
+                if (change > 0) avgGain += change;
+                else avgLoss -= change;
+            }
+
+            avgGain /= period;
+            avgLoss /= period;
+            let rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+            rsi.push(100 - (100 / (1 + rs)));
+
+            // Calculate subsequent RSI values
+            for (let i = period + 1; i < closes.length; i++) {
+                const change = closes[i] - closes[i - 1];
+                let currentGain = 0;
+                let currentLoss = 0;
+
+                if (change > 0) currentGain = change;
+                else currentLoss = -change;
+
+                avgGain = (avgGain * (period - 1) + currentGain) / period;
+                avgLoss = (avgLoss * (period - 1) + currentLoss) / period;
+
+                rs = avgLoss === 0 ? 100 : avgGain / avgLoss;
+                rsi.push(100 - (100 / (1 + rs)));
+            }
+
+            // Pad beginning with null values
+            return Array(period).fill(null).concat(rsi);
+        }
+
+        // Calculate Bollinger Band Width
+        function calculateBBWidth(closes, period=20, dev=2) {
+            const bbWidth = [];
+            for (let i = period - 1; i < closes.length; i++) {
+                const slice = closes.slice(i - period + 1, i + 1);
+                const mean = slice.reduce((a, b) => a + b, 0) / period;
+                const stdDev = Math.sqrt(slice.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period);
+                
+                const upper = mean + dev * stdDev;
+                const lower = mean - dev * stdDev;
+                bbWidth.push((upper - lower) / mean);
+            }
+            return Array(period - 1).fill(null).concat(bbWidth);
+        }
+
+        // Rolling maximum
+        function rollingMax(series, period) {
+            return series.map((_, i, arr) => {
+                if (i < period - 1) return null;
+                return Math.max(...arr.slice(i - period + 1, i + 1));
+            });
+        }
+
+        // Rolling standard deviation
+        function rollingStd(series, period) {
+            return series.map((_, i, arr) => {
+                if (i < period - 1) return null;
+                const slice = arr.slice(i - period + 1, i + 1);
+                const mean = slice.reduce((a, b) => a + b, 0) / period;
+                return Math.sqrt(slice.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / period);
+            });
+        }
+
+        // Rolling average
+        function rollingAvg(series, period) {
+            return series.map((_, i, arr) => {
+                if (i < period - 1) return null;
+                return arr.slice(i - period + 1, i + 1).reduce((a, b) => a + b, 0) / period;
+            });
+        }
+
+        // Classify market stage
+        function classifyStage(row) {
+            if (!row.close || !row.wma_30 || row.slope_30wma === null) return 'Unclassified';
+            
+            const price = row.close;
+            const wma30 = row.wma_30;
+            const slope = row.slope_30wma;
+            const max10w = row.max_10w;
+            const max30w = row.max_30w;
+            const rsi = row.rsi;
+            const bbWidth = row.bb_width;
+            
+            // Stage classification logic
+            if (price > wma30 && slope > 0 && price >= max10w && price >= max30w * 0.9) {
+                if (slope > 0.005 && bbWidth < 0.15 && rsi > 50 && rsi < 70) {
+                    return 'Early Stage 2';
+                }
+                return 'Stage 2';
+            } 
+            else if (price > wma30 && (slope <= 0 || price < max30w * 0.9)) {
+                if (bbWidth > 0.2 || rsi > 70) {
+                    return 'Stage 3';
+                }
+                return 'Early Stage 3';
+            }
+            else if (price < wma30 && slope < 0) {
+                if (price < max30w * 0.7 || rsi < 30) {
+                    return 'Stage 4';
+                }
+                return 'Early Stage 4';
+            }
+            return 'Unclassified';
+        }
+
+        // Update stock analysis with new data
+        async function updateStockAnalysis(ticker) {
+            const rawData = await fetchStockData(ticker);
+            if (!rawData || rawData.length === 0) return;
+            
+            // Process data for indicators
+            const closes = rawData.map(d => d.close);
+            const highs = rawData.map(d => d.high);
+            const lows = rawData.map(d => d.low);
+            const volumes = rawData.map(d => d.volume);
+
+            // Calculate indicators
+            const wma30 = wma(closes, 30);
+            const slope30wma = wmaSlope(closes, 30);
+            const max10w = rollingMax(highs, 10);
+            const max30w = rollingMax(highs, 30);
+            const std10w = rollingStd(closes, 10);
+            const volAvg10w = rollingAvg(volumes, 10);
+            const rsi14 = calculateRSI(closes, 14);
+            const bbWidth = calculateBBWidth(closes, 20, 2);
+
+            // Combine all data
+            currentData = rawData.map((d, i) => ({
+                ...d,
+                wma_30: wma30[i],
+                slope_30wma: slope30wma[i],
+                max_10w: max10w[i],
+                max_30w: max30w[i],
+                std_10w: std10w[i],
+                vol_avg_10w: volAvg10w[i],
+                rsi: rsi14[i],
+                bb_width: bbWidth[i],
+                stage: classifyStage({
+                    close: d.close,
+                    wma_30: wma30[i],
+                    slope_30wma: slope30wma[i],
+                    max_10w: max10w[i],
+                    max_30w: max30w[i],
+                    std_10w: std10w[i],
+                    vol_avg_10w: volAvg10w[i],
+                    rsi: rsi14[i],
+                    bb_width: bbWidth[i]
+                })
+            }));
+
+            // Update UI
+            updateStockInfo(currentData);
+            updateStageChart(currentData);
+            calculatePerformanceMetrics(currentData);
+            updateRecentStageChanges(currentData);
+        }
+
+        // Update stock information display
+        function updateStockInfo(data) {
+            if (data.length === 0) return;
+            
+            const latest = data[data.length - 1];
+            const prev = data.length > 1 ? data[data.length - 2] : latest;
+            
+            // Basic info
+            document.getElementById('stock-name').textContent = latest.symbol.replace('.NS', '');
+            document.getElementById('stock-symbol').textContent = latest.symbol;
+            document.getElementById('stock-price').textContent = latest.close.toFixed(2);
+            
+            // Price change
+            const change = latest.close - prev.close;
+            const changePercent = (change / prev.close) * 100;
+            
+            const changeElement = document.getElementById('stock-change');
+            changeElement.textContent = `${change >= 0 ? '+' : ''}${change.toFixed(2)} (${changePercent >= 0 ? '+' : ''}${changePercent.toFixed(2)}%)`;
+            changeElement.className = change >= 0 ? 'text-green-500 dark:text-green-400' : 'text-red-500 dark:text-red-400';
+            
+            // Stage info
+            document.getElementById('stock-stage').textContent = latest.stage;
+            document.getElementById('wma-slope').textContent = latest.slope_30wma !== null ? (latest.slope_30wma * 100).toFixed(2) + '%' : 'N/A';
+            document.getElementById('stock-rsi').textContent = latest.rsi !== null ? latest.rsi.toFixed(1) : 'N/A';
+            document.getElementById('bb-width').textContent = latest.bb_width !== null ? (latest.bb_width * 100).toFixed(1) + '%' : 'N/A';
+        }
+
+        // Update the stage chart with new data
+        function updateStageChart(data) {
+            if (data.length === 0) return;
+            
+            // Update price data
+            stageChart.data.datasets[0].data = data.map(d => ({
+                x: d.date,
+                y: d.close
+            }));
+            
+            // Update WMA data
+            stageChart.data.datasets[1].data = data.map(d => ({
+                x: d.date,
+                y: d.wma_30
+            }));
+            
+            // Update RSI data
+            stageChart.data.datasets[2].data = data.map(d => ({
+                x: d.date,
+                y: d.rsi
+            }));
+            
+            // Update stage annotations if enabled
+            if (document.getElementById('stage-toggle').checked) {
+                updateStageAnnotations(data);
+            }
+            
+            // Update chart
+            stageChart.update();
+        }
+
+        // Update stage background annotations
+        function updateStageAnnotations(data) {
+            const annotations = {};
+            let currentStage = data[0].stage;
+            let startDate = data[0].date;
+            let annotationId = 1;
+            
+            for (let i = 1; i < data.length; i++) {
+                if (data[i].stage !== currentStage) {
+                    annotations[`box${annotationId}`] = createStageAnnotation(currentStage, startDate, data[i-1].date);
+                    annotationId++;
+                    currentStage = data[i].stage;
+                    startDate = data[i].date;
+                }
+            }
+            
+            // Add final stage
+            annotations[`box${annotationId}`] = createStageAnnotation(currentStage, startDate, data[data.length-1].date);
+            
+            stageChart.options.plugins.annotation.annotations = annotations;
+        }
+
+        // Create a stage annotation box
+        function createStageAnnotation(stage, startDate, endDate) {
+            return {
+                type: 'box',
+                xMin: startDate,
+                xMax: endDate,
+                backgroundColor: getStageColor(stage),
+                borderWidth: 0,
+                drawTime: 'beforeDatasetsDraw'
+            };
+        }
+
+        // Get color for a stage
+        function getStageColor(stage) {
+            switch(stage) {
+                case 'Stage 2': return 'rgba(34, 197, 94, 0.1)';
+                case 'Early Stage 2': return 'rgba(34, 197, 94, 0.2)';
+                case 'Stage 3': return 'rgba(234, 179, 8, 0.1)';
+                case 'Early Stage 3': return 'rgba(234, 179, 8, 0.2)';
+                case 'Stage 4': return 'rgba(239, 68, 68, 0.1)';
+                case 'Early Stage 4': return 'rgba(239, 68, 68, 0.2)';
+                default: return 'rgba(156, 163, 175, 0.1)';
+            }
+        }
+
+        // Calculate performance metrics
+        function calculatePerformanceMetrics(data) {
+            // Filter out null/invalid data points
+            const validData = data.filter(d => d.stage && d.close && d.wma_30);
+            
+            // Calculate returns by stage
+            const stageReturns = {
+                'Stage 2': [],
+                'Early Stage 2': [],
+                'Stage 3': [],
+                'Stage 4': []
+            };
+            
+            for (let i = 1; i < validData.length; i++) {
+                const current = validData[i];
+                const prev = validData[i - 1];
+                const returnPct = (current.close - prev.close) / prev.close * 100;
+                
+                if (stageReturns[current.stage]) {
+                    stageReturns[current.stage].push(returnPct);
+                }
+            }
+            
+            // Calculate average returns
+            const avgStage2Return = stageReturns['Stage 2'].length > 0 
+                ? stageReturns['Stage 2'].reduce((a, b) => a + b, 0) / stageReturns['Stage 2'].length 
+                : 0;
+                
+            const avgStage4Return = stageReturns['Stage 4'].length > 0 
+                ? stageReturns['Stage 4'].reduce((a, b) => a + b, 0) / stageReturns['Stage 4'].length 
+                : 0;
+            
+            // Calculate strategy returns
+            const strategyReturns = [];
+            for (let i = 1; i < validData.length; i++) {
+                const current = validData[i];
+                const prev = validData[i - 1];
+                const returnPct = (current.close - prev.close) / prev.close;
+                
+                let position = 0;
+                if (prev.stage.includes('Stage 2')) position = 1;
+                else if (prev.stage.includes('Stage 4')) position = -1;
+                
+                strategyReturns.push(position * returnPct);
+            }
+            
+            // Calculate Sharpe ratio (annualized)
+            const avgReturn = strategyReturns.length > 0 
+                ? strategyReturns.reduce((a, b) => a + b, 0) / strategyReturns.length 
+                : 0;
+                
+            const stdDev = strategyReturns.length > 0
+                ? Math.sqrt(strategyReturns.reduce((a, b) => a + Math.pow(b - avgReturn, 2), 0) / strategyReturns.length)
+                : 0;
+                
+            const sharpeRatio = stdDev > 0 ? (avgReturn / stdDev) * Math.sqrt(52) : 0;
+            
+            // Update UI
+            document.getElementById('stage2-returns').textContent = `${avgStage2Return >= 0 ? '+' : ''}${avgStage2Return.toFixed(1)}%`;
+            document.getElementById('stage4-returns').textContent = `${avgStage4Return >= 0 ? '+' : ''}${avgStage4Return.toFixed(1)}%`;
+            document.getElementById('strategy-sharpe').textContent = sharpeRatio.toFixed(2);
+        }
+
+        // Update recent stage changes table
+        function updateRecentStageChanges(data) {
+            const changes = [];
+            
+            for (let i = 1; i < data.length; i++) {
+                if (data[i].stage !== data[i-1].stage) {
+                    changes.push({
+                        date: data[i].date,
+                        from: data[i-1].stage,
+                        to: data[i].stage,
+                        price: data[i].close
+                    });
+                }
+            }
+            
+            // Get last 5 changes (most recent first)
+            const recentChanges = changes.slice(-5).reverse();
+            const tableBody = document.getElementById('stage-changes');
+            tableBody.innerHTML = '';
+            
+            recentChanges.forEach(change => {
+                const row = document.createElement('tr');
+                row.className = 'hover:bg-gray-50 dark:hover:bg-gray-700';
+                
+                row.innerHTML = `
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        ${change.date.toLocaleDateString()}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium ${getStageTextColor(change.from)}">
+                        ${change.from}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm font-medium ${getStageTextColor(change.to)}">
+                        ${change.to}
+                    </td>
+                    <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">
+                        $${change.price.toFixed(2)}
+                    </td>
+                `;
+                
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Get text color for stage
+        function getStageTextColor(stage) {
+            switch(stage) {
+                case 'Stage 2': return 'text-green-600 dark:text-green-400';
+                case 'Early Stage 2': return 'text-green-700 dark:text-green-300';
+                case 'Stage 3': return 'text-yellow-600 dark:text-yellow-400';
+                case 'Early Stage 3': return 'text-yellow-700 dark:text-yellow-300';
+                case 'Stage 4': return 'text-red-600 dark:text-red-400';
+                case 'Early Stage 4': return 'text-red-700 dark:text-red-300';
+                default: return 'text-gray-500 dark:text-gray-300';
+            }
+        }
+
+        // Toggle dark/light theme
+        function toggleTheme() {
+            document.documentElement.classList.toggle('dark');
+            localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+            
+            // Update chart colors for theme
+            if (stageChart) {
+                const isDark = document.documentElement.classList.contains('dark');
+                const gridColor = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)';
+                
+                stageChart.options.scales.x.grid.color = gridColor;
+                stageChart.options.scales.y.grid.color = gridColor;
+                stageChart.update();
+            }
+        }
+
+        // Check for saved theme preference
+        if (localStorage.getItem('theme') === 'dark' || 
+            (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+        }
+    </script>
+</body>
+</html>
